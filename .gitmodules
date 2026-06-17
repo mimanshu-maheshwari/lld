@@ -1,0 +1,6 @@
+[submodule "parking-lot/parking-lot-java"]
+	path = parking-lot/parking-lot-java
+	url = https://github.com/mimanshu-maheshwari/parking-lot-lld-java.git
+[submodule "splitwise-lld-java"]
+	path = splitwise-lld-java
+	url = https://github.com/mimanshu-maheshwari/splitwise-lld-java.git
