@@ -4,45 +4,45 @@ import java.util.HashMap;
 /**
  * This is a Thread unsafe implementation for Least Recently Used cache
  */
-public class LRU_Sync<K, V> {
+public class LRU<K, V> {
   private Map<K, Node<K, V>> nodes;
   private Node<K, V> head, tail;
   private int size;
   private int capacity;
 
-  private class Node<K,V> {
+  private class Node<K, V> {
     K key;
     V value;
     Node<K, V> next, prev;
 
     public Node() {
-      this.key   = null;
+      this.key = null;
       this.value = null;
-      this.next  = null;
-      this.prev  = null;
+      this.next = null;
+      this.prev = null;
     }
 
     public Node(K key, V value) {
-      this.key   = key;
+      this.key = key;
       this.value = value;
-      this.next  = null;
-      this.prev  = null;
+      this.next = null;
+      this.prev = null;
     }
 
   }
 
-  public LRU_Sync(int capacity) {
+  public LRU(int capacity) {
     this.capacity = capacity;
-    this.nodes    = new HashMap<>();
-    this.head     = new Node<>();
-    this.tail     = new Node<>();
-    head.next     = tail;
-    tail.prev     = head;
-    this.size     = 0;
+    this.nodes = new HashMap<>();
+    this.head = new Node<>();
+    this.tail = new Node<>();
+    head.next = tail;
+    tail.prev = head;
+    this.size = 0;
   }
 
   private Node<K, V> pop(Node<K, V> node) {
-    if (size == 0){
+    if (size == 0) {
       return null;
     }
     Node<K, V> prev = node.prev, next = node.next;
@@ -73,7 +73,7 @@ public class LRU_Sync<K, V> {
   }
 
   private void update(Node<K, V> node) {
-    pop(node); 
+    pop(node);
     pushHead(node);
   }
 
@@ -88,14 +88,14 @@ public class LRU_Sync<K, V> {
 
   private void evict() {
     var last = popTail();
-    if (last == null){
+    if (last == null) {
       return;
     }
     nodes.remove(last.key);
   }
 
   public boolean put(K key, V value) {
-    if (capacity == 0){
+    if (capacity == 0) {
       return false;
     }
 
@@ -117,7 +117,7 @@ public class LRU_Sync<K, V> {
   }
 
   public static void main(String[] args) {
-    var lruCache = new LRU_Sync<Integer, Integer>(4);
+    var lruCache = new LRU<Integer, Integer>(4);
     lruCache.put(1, 2);
     lruCache.put(2, 3);
     lruCache.put(3, 4);
