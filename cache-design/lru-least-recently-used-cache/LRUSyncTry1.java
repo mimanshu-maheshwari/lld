@@ -1,15 +1,16 @@
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * ISSUES:
  * 1. No proper test cases for cycles, size, capacity
  * 2. No fine grained locking mechanism
- * 3. Can use ConcurrentLinkedDeque for access order with ConcurrentHashMap
  */
 public class LRUSyncTry1<K, V> {
 
@@ -37,11 +38,13 @@ public class LRUSyncTry1<K, V> {
   private final int capacity;
   private Map<K, Node> data;
   private Node left, right;
+  private ReentrantLock lock;
 
   public LRUSyncTry1(int capacity) {
     if (capacity == 0) {
       throw new IllegalArgumentException("Capacity can't be zero!!");
     }
+    this.lock = new ReentrantLock();
     this.capacity = capacity;
     this.data = new HashMap<>();
     this.left = new Node();
@@ -51,7 +54,7 @@ public class LRUSyncTry1<K, V> {
   }
 
   private void pop(Node node) {
-    if (data.size() == 0) {
+    if (node == left || node == right) {
       return;
     }
     Node prev = node.prev, next = node.next;
@@ -62,7 +65,7 @@ public class LRUSyncTry1<K, V> {
   }
 
   private Node popLeft() {
-    if (data.size() == 0) {
+    if (left.next == right) {
       return null;
     }
     Node node = this.left.next;
@@ -91,28 +94,38 @@ public class LRUSyncTry1<K, V> {
     data.remove(node.key);
   }
 
-  public synchronized V get(K key) {
-    if (!data.containsKey(key)) {
-      return null;
+  public V get(K key) {
+    lock.lock();
+    try {
+      Node node = data.get(key);
+      if (node == null) {
+        return null;
+      }
+      refresh(node);
+      return node.val;
+    } finally {
+      lock.unlock();
     }
-    Node node = data.get(key);
-    refresh(node);
-    return node.val;
   }
 
-  public synchronized V put(K key, V value) {
-    if (data.containsKey(key)) {
+  public V put(K key, V value) {
+    lock.lock();
+    try {
       Node node = data.get(key);
-      V prev = node.val;
-      node.val = value;
-      refresh(node);
-      return prev;
+      if (node != null) {
+        V prev = node.val;
+        node.val = value;
+        refresh(node);
+        return prev;
+      }
+      evict();
+      node = new Node(key, value);
+      data.put(key, node);
+      pushRight(node);
+      return null;
+    } finally {
+      lock.unlock();
     }
-    evict();
-    Node node = new Node(key, value);
-    data.put(key, node);
-    pushRight(node);
-    return null;
   }
 
   public static void main(String[] args) {
@@ -122,7 +135,7 @@ public class LRUSyncTry1<K, V> {
     CountDownLatch latch = new CountDownLatch(200);
     Thread t1 = new Thread(() -> {
       for (int i = 0; i < 100; ++i) {
-        final int key = i % 7;
+        final int key = i % 5;
         final int value = i;
         executorService.execute(() -> {
           Integer val = lruCache.put(key, value);
@@ -141,7 +154,7 @@ public class LRUSyncTry1<K, V> {
     }, "Add thread");
     Thread t2 = new Thread(() -> {
       for (int i = 0; i < 100; ++i) {
-        final int key = i % 7;
+        final int key = i % 5;
         executorService.execute(() -> {
           Integer value = lruCache.get(key);
           if (value == null) {
